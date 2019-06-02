@@ -11,9 +11,12 @@ import numpy
 
 # dictionary[word] = numpy.array(list of #, dtype = float)
 
-input_one = sys.argv[1]
-input_two = sys.argv[2]
-input_three = sys.argv[3]
+model_path = sys.argv[1]
+test_set = sys.argv[2]
+output_dir = sys.argv[3]
+eval_file = sys.argv[4]
+should_normalize = int(sys.argv[5])
+similarity_type = int(sys.argv[6])
 
 # creates dictionary and reads the vector into a dictionary
 vec2dic = {}
@@ -25,7 +28,7 @@ def Vec2Dic(line):
     vec2dic[parts[0]] = numpy.array(parts[1:lengthy], dtype=float)
 
 
-with open(input_one, 'r') as open_file:
+with open(model_path, 'r') as open_file:
     lines = open_file.readlines()
     for x in lines:
         Vec2Dic(x)
@@ -39,8 +42,9 @@ def analogizer(line):
     A = word_list[0]
     B = word_list[1]
     C = word_list[2]
-    d_vec = vec2dic[C] + vec2dic[B] - vec2dic[A]
-    return d_vec
+    this_d_vec = vec2dic[C] + vec2dic[B] - vec2dic[A]
+    trifecta = 'A' + ' ' + 'B' + ' ' + 'C'
+    return this_d_vec, trifecta
 
 
 # Euclydian Distance
@@ -56,12 +60,13 @@ def euclidian_finder(d_vec, compare_vec):
 
 
 def manhattan_finder(d_vec, compare_vec):
-    distance = abs(d_vec[1] - compare_vec[1]) + abs(d_vec[2] - compare_vec[2])
+    distance = sum(abs(d_vec-compare_vec))
     c = distance
     return c
 
 
 def cosine_finder(d_vec, compare_vec):
+    c = d_vec.dot(compare_vec)
     return c
 
 
@@ -79,6 +84,7 @@ def comparer0(d_vec, vec2dic):
     return closest_word
 # care about the word that is closest, closest distance (c). euclydian, smallest c, cosine largest c
 
+
 # manhattan
 def comparer1(d_vec, vec2dic):
     closest_distance = 500
@@ -91,6 +97,7 @@ def comparer1(d_vec, vec2dic):
             closest_word = word
     return closest_word
 
+
 # comparison for cosine
 def comparer2(d_vec, vec2dic):
     closest_distance = 500
@@ -102,14 +109,6 @@ def comparer2(d_vec, vec2dic):
             closest_distance = this_c
             closest_word = word
     return closest_word
-
-# RANDOM NOTES: ignore
-    #if you use numpy
-    # this_d_vec = vec2dic[C] + vec2dic[B] - vec2dic[A]
-
-        # D_vec[0]= C[0]+B[0]-A[0]
-    # for every 300 numbers in vector, add to list to equal D_vec
-    # access same index of all three vectors
 
 
 def to_normalize(d_vec):
@@ -124,29 +123,56 @@ def to_normalize(d_vec):
 
 
 # reads directory files
-for file in os.listdir(input_two):
+for file in os.listdir(test_set):
     if file.startswith('.'):
         continue
     if not file.endswith('.txt'):
         continue
-    filepath = os.path.join(input_two, file)
+    filepath = os.path.join(test_set, file)
+    output_path = os.path.join(output_dir, file)
     with open(filepath, 'r') as open_file:
-        for line in open_file.readlines():
-            this_d_vec = analogizer(line)
-            # if it needs to be normalized, add normalize function HERE before comparers, add vec to first parameter
-            comparer0(this_d_vec, vec2dic)
-            comparer1(this_d_vec, vec2dic)
-            comparer2(this_d_vec, vec2dic)
+        with open(output_path, 'w') as open_output:
+            if should_normalize == 0:
+                for line in open_file.readlines():
+                        normalized = to_normalize(line)
+                        print(normalized)
+                        this_d_vec, trifecta = analogizer(normalized)
+                        if similarity_type == 0:
+                            D = comparer0(this_d_vec, vec2dic)
+                        if similarity_type == 1:
+                            D = comparer1(this_d_vec, vec2dic)
+                        if similarity_type == 2:
+                            D = comparer2(this_d_vec, vec2dic)
+                            open_output.write(trifecta + ' ' + D)
+                            correct_counter = 0
+                            if D == this_d_vec:
+                                correct_counter += 1
+                            with open(eval_file, 'w') as this:
+                                this.write(str(correct_counter))
+                                this.close()
+                if should_normalize == 1:
+                    for line in open_file.readlines():
+                        this_d_vec, trifecta = analogizer(line)
+                        if similarity_type == 0:
+                            D = comparer0(this_d_vec, vec2dic)
+                        if similarity_type == 1:
+                            D = comparer1(this_d_vec, vec2dic)
+                        if similarity_type == 2:
+                            D = comparer2(this_d_vec, vec2dic)
+                            open_output.write(trifecta + ' ' + D)
+                        correct_counter = 0
+                        if D == this_d_vec:
+                            correct_counter += 1
+                        with open(eval_file, 'w') as this:
+                            this.write(str(correct_counter))
+                            this.close()
 
 
-# NOTES
-#for filename in os.listdir(dir_name):
-    # if file_name.startswith('.')
-        #continue
-    #if not filename.endswith('.txt'):
-        #continue
-    #filepath = os.path.join(dir_name, filename)
-    #with open(filepath, 'r') as open_file
-        #for line in open_file.readlines():
-            #print(line)
+
+                # compare this D to original D
+                # if the D's are the sme, increment correct counter
+                #record file name and accuracy, correct divided by all for each file in the eval file
+                #save to accuracy string or dictionary 
+
+
 
